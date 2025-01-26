@@ -19,9 +19,9 @@ class Circle:
         self.center = center
         self.radius = r
         self.angle = 0
-    def get_point(self):
-        x = self.radius * math.cos(self.angle)
-        y = self.radius * math.sin(self.angle)
+    def get_point(self, p=1):
+        x = p * self.radius * math.cos(self.angle)
+        y = p * self.radius * math.sin(self.angle)
         return Point(x+self.center.x, y+self.center.y)
 
 class Spirograph:
@@ -32,14 +32,21 @@ class Spirograph:
         self.first_time = True
         self.number_of_iterations = 0
         self.c1 = Circle(Point(500,500), 200)
-        self.c2 = Circle(Point(), 87)
+        self.c2 = Circle(Point(), 30)
         self.step = 0.1
         # self.angle = 0
         self.clients = {}
 
     def add_client(self, sessionid, w, h):
         print("adding client", sessionid, w,h)
+        iterations = math.lcm(self.c1.radius, self.c2.radius)
+        iterations = iterations / self.c1.radius
+        print("will need iterations: ", iterations)
         self.clients[sessionid] = dict(width=w, height=h, last_point=None)
+        data = dict(type="circle",cx=self.c1.center.x,cy=self.c1.center.y,r=self.c1.radius,color="#f00")
+        line = json.dumps(data)
+        self.send_message(line, sessionid)
+
     def remove_client(self, sessionid):
         print("client left", sessionid)
         self.clients[sessionid] = None
@@ -52,10 +59,11 @@ class Spirograph:
             return False
         
     def is_last_iteration(self):
-        if self.number_of_iterations > 3:
-            return True
-        else:
-            return False
+        iterations = math.lcm(self.c1.radius, self.c2.radius)
+        iterations = iterations / self.c1.radius
+        i = self.c2.angle / (2*math.pi)
+
+        print(int(i), iterations)
 
     def get_next_point(self):
         ratio = self.c1.radius / self.c2.radius
@@ -63,8 +71,11 @@ class Spirograph:
         self.c2.angle += ratio * self.step
 
         self.c2.center = self.c1.get_point()
+        # data = dict(type="circle",cx=self.c1.center.x,cy=self.c1.center.y,r=self.c1.radius,color="#f00")
+        # line = json.dumps(data)
+        # self.send_message(line, sessionid)
 
-        return self.c2.get_point()
+        return self.c2.get_point(p=0.5)
 
 
     def periodic(self):
@@ -78,27 +89,18 @@ class Spirograph:
                 # print("session left, ignoring:", sessionid)
                 continue
 
+            self.is_last_iteration()
+
             p2 = self.get_next_point()
             if config["last_point"] is None:
                 p1 = p2
             else:
                 p1 = config["last_point"]
             
-            print(p1)
             config["last_point"] = p2
-            line = json.dumps(dict(type="line",x1=p1.x,y1=p1.y,x2=p2.x,y2=p2.y,color="#00f"))
+            data = dict(type="line",x1=p1.x,y1=p1.y,x2=p2.x,y2=p2.y,color="#00f")
+            line = json.dumps(data)
             self.send_message(line, sessionid)
-
-        # if self.is_first_iteration():
-        #     print("this is the first iteration")
-        #     data = dict(type="circle",cx=self.center.x,cy=self.center.y,r=self.radius)
-        #     circle = json.dumps(data)
-            # self.send_message(circle)
-
-        # if self.is_last_iteration():
-        #     # print("this is the last iteration")
-        #     pass
-        # self.number_of_iterations += 1
 
         self.loop.call_later(0.01, self.periodic)
 
