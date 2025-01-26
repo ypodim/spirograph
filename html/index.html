@@ -1,0 +1,132 @@
+<!DOCTYPE html><head>
+    <meta charset="UTF-8">
+    <title>spirograph</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    background-color: black;
+}
+#canvas {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    margin: 0 auto; /* Center the container horizontally */
+}
+</style>
+<script src="https://ocanvas.org/js/libs/ocanvas-2.10.1.min.js"></script>
+<script>
+const uniqueId = Math.random().toString(36).substr(2, 9);
+var mySocket = 0;
+const socketMessageListener = (event) => {
+    // console.log(event.data);
+    object = JSON.parse(event.data)
+    if (object.type === "line") {
+        draw_line(object.x1,object.y1,object.x2,object.y2,object.color);
+    }
+    if (object.type === "circle") {
+        draw_circle(object.cx,object.cy,object.r);
+    }
+};
+const socketOpenListener = (event) => {
+    console.log("opened")
+    dimensions = {
+        sessionid: uniqueId,
+        width: document.body.clientWidth,
+        height: document.body.clientHeight
+    };
+    mySocket.send(JSON.stringify(dimensions));
+};
+const socketCloseListener = (event) => {
+   if (mySocket) {
+      console.error('*** Disconnected.');
+   }
+   // setTimeout(function() { connect(); }, 100);
+   // mySocket = new WebSocket('ws://localhost/ws');
+   // mySocket.addEventListener('open', socketOpenListener);
+   // mySocket.addEventListener('message', socketMessageListener);
+   // mySocket.addEventListener('close', socketCloseListener);
+};
+var connect = function(){
+    console.log("connecting...")
+    mySocket = new WebSocket('ws://localhost/ws');
+    mySocket.addEventListener('open', socketOpenListener);
+    mySocket.addEventListener('message', socketMessageListener);
+    mySocket.addEventListener('close', socketCloseListener);
+}
+socketCloseListener();
+connect();
+
+
+var height = window.innerWidth;
+var width = window.innerHeight;
+var c = document.querySelector("#canvas")
+c.width = width;
+c.height = height;
+c.addEventListener("touchmove", function (e) { e.preventDefault(); }, false);
+
+var draw_line = function(x1,y1,x2,y2,color){
+    var line = canvas.display.line({
+        start: { x:x1, y:y1 },
+        end: { x:x2, y:y2 },
+        stroke: "2px "+color,
+        cap: "round"
+    });
+    canvas.addChild(line);
+}
+var draw_circle = function(cx,cy,r){
+    var ellipse = canvas.display.ellipse({
+        x: cx,
+        y: cy,
+        radius_x: r,
+        radius_y: r,
+        stroke: "1px #faa"
+    });
+    canvas.addChild(ellipse);
+}
+    
+var canvas = oCanvas.create({
+    canvas: "#canvas",
+    background: "#d0d0d0",
+    fps: 5
+});
+
+
+// Set up a tick function that will move all satellites each frame
+canvas.setLoop(function () {
+    
+});
+
+// Set up play/pause control for the demo
+var text = canvas.display.text({
+    x: canvas.width / 2, y: 220,
+    origin: { x: "center", y: "center" },
+    fill: "#fff", size: 25, weight: "bold", text: "Play"
+}).add();
+canvas.bind("click tap", function () {
+    if (mySocket.readyState !== WebSocket.CLOSED) {
+        console.log("open. Closing...");
+        mySocket.close();
+    } else {
+        console.log("closed. Opening...");
+        connect();
+    }
+    text.text = canvas.timeline.running ? "Play" : "Pause";
+    if (canvas.timeline.running) {
+        canvas.reset();
+    }
+    canvas.redraw(true);
+    canvas.timeline[canvas.timeline.running ? "stop" : "start"]();
+});
+
+</script>
+</body>
+</html>
