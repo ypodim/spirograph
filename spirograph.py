@@ -31,8 +31,8 @@ class Spirograph:
         # self.last_point = Point(1100,100)
         self.first_time = True
         self.number_of_iterations = 0
-        self.c1 = Circle(Point(500,500), 200)
-        self.c2 = Circle(Point(), 30)
+        self.c1 = Circle(Point(500,500), 205)
+        self.c2 = Circle(Point(), 79)
         self.step = 0.1
         # self.angle = 0
         self.clients = {}
@@ -43,7 +43,11 @@ class Spirograph:
         iterations = iterations / self.c1.radius
         print("will need iterations: ", iterations)
         self.clients[sessionid] = dict(width=w, height=h, last_point=None)
-        data = dict(type="circle",cx=self.c1.center.x,cy=self.c1.center.y,r=self.c1.radius,color="#f00")
+        cx=self.c1.center.x
+        cy=self.c1.center.y
+        r=self.c1.radius
+        color="#f00"
+        data = dict(type="circle",cx=cx,cy=cy,r=r,color=color)
         line = json.dumps(data)
         self.send_message(line, sessionid)
 
@@ -71,13 +75,12 @@ class Spirograph:
         self.c2.angle += ratio * self.step
 
         self.c2.center = self.c1.get_point()
-        # data = dict(type="circle",cx=self.c1.center.x,cy=self.c1.center.y,r=self.c1.radius,color="#f00")
-        # line = json.dumps(data)
-        # self.send_message(line, sessionid)
 
         return self.c2.get_point(p=0.5)
 
-
+    def get_next_color(self):
+        return "#00f"
+        
     def periodic(self):
         # if self.store["actions"]:
         #     if self.store["actions"][-1] == "reset":
@@ -86,7 +89,7 @@ class Spirograph:
 
         for sessionid, config in self.clients.items():
             if config is None:
-                # print("session left, ignoring:", sessionid)
+                # skip clients who didn't send window dimensions yet
                 continue
 
             self.is_last_iteration()
@@ -98,7 +101,8 @@ class Spirograph:
                 p1 = config["last_point"]
             
             config["last_point"] = p2
-            data = dict(type="line",x1=p1.x,y1=p1.y,x2=p2.x,y2=p2.y,color="#00f")
+            color = self.get_next_color()
+            data = dict(type="line",x1=p1.x,y1=p1.y,x2=p2.x,y2=p2.y,color=color)
             line = json.dumps(data)
             self.send_message(line, sessionid)
 
